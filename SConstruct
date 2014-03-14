@@ -8,14 +8,14 @@ import sys
 import methods
 import multiprocessing
 
-# Enable aggresive compile mode if building on a multi core box
+# Enable aggressive compile mode if building on a multi core box
 # only is we have not set the number of jobs already or we do
 # not want it
 if ARGUMENTS.get('spawn_jobs', 'yes') == 'yes' and \
 	int(GetOption('num_jobs')) <= 1:
 	NUM_JOBS = multiprocessing.cpu_count()
 	if NUM_JOBS > 1:
-		SetOption('num_jobs', NUM_JOBS+1)
+		SetOption('num_jobs', NUM_JOBS+1)		
 
 methods.update_version()
 
@@ -67,9 +67,11 @@ custom_tools=['default']
 
 if (os.name=="posix"):
 	pass
-elif (os.name=="nt"):
-    if (os.getenv("VSINSTALLDIR")==None):
-	custom_tools=['mingw']
+elif (os.name=="nt"):    
+	if (os.getenv("VSINSTALLDIR")==None):
+		custom_tools=['mingw']
+	
+	
 
 env_base=Environment(tools=custom_tools,ENV = {'PATH' : os.environ['PATH']});
 #env_base=Environment(tools=custom_tools);
@@ -139,6 +141,11 @@ for k in platform_opts.keys():
 	opt_list = platform_opts[k]
 	for o in opt_list:
 		opts.Add(o[0],o[1],o[2])
+
+
+#add for safe writing to .pdb file when using multiprocessing on windows
+if (os.name=="nt" and GetOption('num_jobs') > 1 and not 'mingw' in custom_tools):    
+	env_base.Append(CPPFLAGS=['/FS'])	
 
 for x in module_list:
 	opts.Add('module_'+x+'_enabled', "Enable module '"+x+"'.", "yes")
@@ -231,7 +238,7 @@ for p in platform_list:
 	if (env["builtin_zlib"]=='yes'):
 		env.Append(CPPPATH=['#drivers/builtin_zlib/zlib'])
 
-	# to test 64 bits compiltion
+	# to test 64 bits compilation
 	# env.Append(CPPFLAGS=['-m64'])
 
 	if (env_base['squish']=='yes'):
@@ -298,9 +305,9 @@ for p in platform_list:
 		else:
 			print("Python 3.0 not detected ("+pycfg_exec+") support disabled.");
 
-	#if env['nedmalloc'] == 'yes':
+	#if env['nedmalloc'] == 'yes':		
 	#	env.Append(CPPFLAGS = ['-DNEDMALLOC_ENABLED'])
-
+					
 	Export('env')
 
 	#build subdirs, the build order is dependent on link order.
