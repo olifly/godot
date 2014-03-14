@@ -1,6 +1,7 @@
 Import('env')
 
 
+
 common_win=[
 	"context_gl_win.cpp",
 	"os_windows.cpp",
@@ -9,5 +10,9 @@ common_win=[
 	"tcp_server_winsock.cpp",
 	"stream_peer_winsock.cpp",
 ]
+
+#add for safe writing to .pdb file when using multiprocessing on windows
+if (GetOption('num_jobs') > 1 and not 'mingw' in env['TOOLS']):    		
+	env.Append(CPPFLAGS=['/FS'])	
 
 env.Program('#bin/godot.exe',['godot_win.cpp']+common_win)
