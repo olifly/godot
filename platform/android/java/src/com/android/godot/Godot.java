@@ -49,15 +49,21 @@ import android.media.*;
 import android.hardware.*;
 import android.content.*;
 
+import android.net.Uri;
+import android.media.MediaPlayer;
+
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.ArrayList;
+import com.android.godot.payments.PaymentsManager;
+import java.io.IOException;
 import android.provider.Settings.Secure;
+import android.widget.FrameLayout;
+import com.android.godot.input.*;
 
 
 public class Godot extends Activity implements SensorEventListener
-{
-
+{	
 	static public class SingletonBase {
 
 		protected void registerClass(String p_name, String[] p_methods) {
@@ -117,7 +123,7 @@ public class Godot extends Activity implements SensorEventListener
 	private SensorManager mSensorManager;
 	private Sensor mAccelerometer;
 
-	public RelativeLayout layout;
+	public FrameLayout layout;
 
 
 	static public GodotIO io;
@@ -131,8 +137,12 @@ public class Godot extends Activity implements SensorEventListener
 	};
 	public ResultCallback result_callback;
 
+	private PaymentsManager mPaymentsManager = null;
+
 	@Override protected void onActivityResult (int requestCode, int resultCode, Intent data) {
-		if (result_callback != null) {
+		if(requestCode == PaymentsManager.REQUEST_CODE_FOR_PURCHASE){
+			mPaymentsManager.processPurchaseResponse(resultCode, data);
+		}else if (result_callback != null) {
 			result_callback.callback(requestCode, resultCode, data);
 			result_callback = null;
 		};
@@ -143,22 +153,36 @@ public class Godot extends Activity implements SensorEventListener
 //		mView = new GodotView(getApplication(),io,use_gl2);
 //		setContentView(mView);
 
-		layout = new RelativeLayout(this);
+		layout = new FrameLayout(this);
 		layout.setLayoutParams(new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.FILL_PARENT));
 		setContentView(layout);
+		
+		// GodotEditText layout
+		GodotEditText edittext = new GodotEditText(this); 
+        edittext.setLayoutParams(new ViewGroup.LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.WRAP_CONTENT));
+        // ...add to FrameLayout
+        layout.addView(edittext);
+		
 		mView = new GodotView(getApplication(),io,use_gl2, this);
 		layout.addView(mView,new LayoutParams(LayoutParams.FILL_PARENT,LayoutParams.FILL_PARENT));
 		mView.setKeepScreenOn(true);
-
+		
+        edittext.setView(mView);
+        io.setEdit(edittext);
 	}
 
+	private static Godot _self;
+	
+	public static Godot getInstance(){
+		return Godot._self;
+	}
+	
 	@Override protected void onCreate(Bundle icicle) {
 
+		System.out.printf("** GODOT ACTIVITY CREATED HERE ***\n");
 
 		super.onCreate(icicle);
-
-
-
+		_self = this;
 		Window window = getWindow();
 		window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
 			| WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -172,12 +196,20 @@ public class Godot extends Activity implements SensorEventListener
 		mSensorManager.registerListener(this, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
 		result_callback = null;
-
+		
+		mPaymentsManager = PaymentsManager.createManager(this).initService();
+		
 	//	instanceSingleton( new GodotFacebook(this) );
 
 
 	}
 
+	@Override protected void onDestroy(){
+		
+		if(mPaymentsManager != null ) mPaymentsManager.destroy();
+		super.onDestroy();
+	}
+	
 	@Override protected void onPause() {
 		super.onPause();
 		mView.onPause();
@@ -314,15 +346,13 @@ public class Godot extends Activity implements SensorEventListener
 		
 	}
 
-	@Override public boolean onKeyUp(int keyCode, KeyEvent event) {
-		GodotLib.key(keyCode, event.getUnicodeChar(0), false);
-		return super.onKeyUp(keyCode, event);
-	};
+	public PaymentsManager getPaymentsManager() {
+		return mPaymentsManager;
+	}
 
-	@Override public boolean onKeyDown(int keyCode, KeyEvent event) {
-		GodotLib.key(keyCode, event.getUnicodeChar(0), true);
-		return super.onKeyDown(keyCode, event);
-	};
+//	public void setPaymentsManager(PaymentsManager mPaymentsManager) {
+//		this.mPaymentsManager = mPaymentsManager;
+//	};
 
 
 	// Audio

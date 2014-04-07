@@ -47,6 +47,7 @@ import android.media.*;
 import android.hardware.*;
 import android.content.*;
 import android.content.pm.ActivityInfo;
+import com.android.godot.input.*;
 //android.os.Build
 
 // Wrapper for native library
@@ -55,7 +56,11 @@ public class GodotIO {
 
 
 	AssetManager am;
-	Activity activity;
+	Godot activity;
+	GodotEditText edit;
+
+	Context applicationContext;
+	MediaPlayer mediaPlayer;
 
 	final int SCREEN_LANDSCAPE=0;
 	final int SCREEN_PORTRAIT=1;
@@ -320,13 +325,13 @@ public class GodotIO {
 
 
 
-	GodotIO(Activity p_activity) {
+	GodotIO(Godot p_activity) {
 
 		am=p_activity.getAssets();
 		activity=p_activity;
 		streams=new HashMap<Integer,AssetData>();
 		dirs=new HashMap<Integer,AssetDir>();
-
+		applicationContext = activity.getApplicationContext();
 
 	}
 
@@ -462,15 +467,24 @@ public class GodotIO {
 	}
 
 	public void showKeyboard(String p_existing_text) {
+		if(edit != null)
+			edit.showKeyboard(p_existing_text);
 
-		InputMethodManager inputMgr = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-		inputMgr.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+		//InputMethodManager inputMgr = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+		//inputMgr.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
 	};
 
 	public void hideKeyboard() {
+		if(edit != null)
+			edit.hideKeyboard();
 
-		InputMethodManager inputMgr = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-		inputMgr.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+        InputMethodManager inputMgr = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+        View v = activity.getCurrentFocus();
+        if (v != null) {
+            inputMgr.hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+        } else {
+            inputMgr.hideSoftInputFromWindow(new View(activity).getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+        }
 	};
 
 	public void setScreenOrientation(int p_orientation) {
@@ -501,6 +515,47 @@ public class GodotIO {
 
 		}
 	};
+	
+	public void setEdit(GodotEditText _edit) {
+		edit = _edit;
+	}
+
+	public void playVideo(String p_path)
+	{
+		Uri filePath = Uri.parse(p_path);
+		mediaPlayer = new MediaPlayer();
+
+		try {
+			mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+			mediaPlayer.setDataSource(applicationContext, filePath);
+			mediaPlayer.prepare();
+			mediaPlayer.start();
+		}
+		catch(IOException e)
+        {
+            System.out.println("IOError while playing video");
+        }
+	}
+
+	public boolean isVideoPlaying() {
+		if (mediaPlayer != null) {
+			return mediaPlayer.isPlaying();
+		}
+		return false;
+	}
+
+	public void pauseVideo() {
+		if (mediaPlayer != null) {
+			mediaPlayer.pause();
+		}
+	}
+
+	public void stopVideo() {
+		if (mediaPlayer != null) {
+			mediaPlayer.release();
+			mediaPlayer = null;
+		}
+	}
 
 	protected static final String PREFS_FILE = "device_id.xml";
 	protected static final String PREFS_DEVICE_ID = "device_id";
